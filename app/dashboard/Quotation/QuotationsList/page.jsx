@@ -14,7 +14,7 @@ import { round2 } from '../../utils'
 const QuotationList =  () => {
 
   const [quotations, setQuotations] = useState([])
-  const [limit, setLimit] = useState('')
+  const [limit, setLimit] = useState('50')
   const [selectedQuotation, setSelectedQuotation] = useState({})
   const [showPreview, setShowPreview] = useState(false)
 

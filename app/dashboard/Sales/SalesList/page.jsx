@@ -131,8 +131,8 @@ export default function SaleListPage() {
       <Row className="bg-light border py-1">
         <Col className="col-md-2">
           <Form.Group>
-            <Form.Select onChange={(e) => setLimit(e.target.value)}>
-              <option>--entries--</option>
+            <Form.Select value={limit} onChange={(e) => setLimit(e.target.value)}>
+              <option value=''>--entries-- (all)</option>
               {[5, 10, 100, 150, 200, 250, 500].map((x, index) => (
                 <option key={index} value={x}>
                   {x}

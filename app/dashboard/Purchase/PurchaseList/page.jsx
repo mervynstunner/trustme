@@ -12,7 +12,7 @@ const PurchaseList = ()=> {
 
 
   const [purchases, setPurchases] = useState([])
-  const [limit, setLimit] = useState(null)
+  const [limit, setLimit] = useState(10)
   const [selectedPurchase, setSelectedPurchase] = useState({})
   const [showPreview, setShowPreview] = useState(false)
   const [date, setDate] = useState({
@@ -113,8 +113,8 @@ const PurchaseList = ()=> {
     <Row>
       <Col className='col-md-2'>
         <Form.Group>
-          <Form.Select onChange={(e)=> setLimit(e.target.value)}>
-            <option>--entries--</option>
+          <Form.Select value={limit} onChange={(e)=> setLimit(e.target.value)}>
+            <option value=''>--entries-- (all)</option>
             {[5, 10, 100, 150, 200, 250, 500].map((x, index)=>(
               <option key={index} value={x}>{x}</option>
             ))}
