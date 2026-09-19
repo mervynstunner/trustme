@@ -2,7 +2,7 @@
 
 import axios from 'axios'
 import React, { useEffect, useState } from 'react'
-import { Button, Form } from 'react-bootstrap'
+import { Button, Form, Image, Spinner } from 'react-bootstrap'
 import { toast } from 'react-toastify'
 
 export default function page() {
@@ -21,12 +21,16 @@ export default function page() {
     trn:"",
     website:"",
     description:"",
-    printFormat:""
+    printFormat:"",
+    primaryColor:"#0d6efd",
+    secondaryColor:"#6c757d"
   })
+
+  const [uploading, setUploading] = useState({ logo: false, footerLogo: false })
 
 
   useEffect(()=>{
-    const getCompany = async()=>{ 
+    const getCompany = async()=>{
       const {data} = await axios.get(`/api/company`)
       console.log(data)
       setCompany(data)
@@ -37,7 +41,7 @@ export default function page() {
 
   const handleSubmit = async(e)=>{
     e.preventDefault()
-    
+
     try{
       toast.promise(
         axios.put(`/api/company/${company._id}`, {...company}),
@@ -53,6 +57,30 @@ export default function page() {
       console.log(company)
     }catch(error){
       console.log(error)
+    }
+  }
+
+  const handleLogoUpload = (field) => async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading((prev) => ({ ...prev, [field]: true }))
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const { data } = await axios.post('/api/uploads', formData)
+      const url = data?.data?.[0]
+      if (url) {
+        setCompany((prevState) => ({ ...prevState, [field]: url }))
+        toast.success('Logo uploaded — click Submit to save')
+      }
+    } catch (error) {
+      console.error('Logo upload failed:', error)
+      toast.error('Failed to upload logo')
+    } finally {
+      setUploading((prev) => ({ ...prev, [field]: false }))
     }
   }
 
@@ -103,11 +131,17 @@ export default function page() {
             onChange={(e)=> setCompany(prevState => ({...prevState, website: e.target.value}))}
           />
         </Form.Group>
-        <Form.Group>
+        <Form.Group className='mb-3'>
           <Form.Label>Company Logo</Form.Label>
+          <div className='d-flex align-items-center gap-2 mb-2'>
+            {company.logo && <Image src={company.logo} alt='logo' style={{height: 50}} rounded/>}
+            {uploading.logo && <Spinner animation='border' size='sm'/>}
+          </div>
           <Form.Control aria-required='true'
             type='file'
-
+            accept='image/*'
+            disabled={uploading.logo}
+            onChange={handleLogoUpload('logo')}
           />
         </Form.Group>
         <Form.Group>
@@ -119,11 +153,17 @@ export default function page() {
             onChange={(e)=> setCompany(prevState => ({...prevState, address: e.target.value}))}
           />
         </Form.Group>
-        <Form.Group>
+        <Form.Group className='mb-3'>
           <Form.Label>Footer Logo</Form.Label>
+          <div className='d-flex align-items-center gap-2 mb-2'>
+            {company.footerLogo && <Image src={company.footerLogo} alt='footer logo' style={{height: 50}} rounded/>}
+            {uploading.footerLogo && <Spinner animation='border' size='sm'/>}
+          </div>
           <Form.Control aria-required='true'
             type='file'
-            //value={company.footerLogo || ''}
+            accept='image/*'
+            disabled={uploading.footerLogo}
+            onChange={handleLogoUpload('footerLogo')}
           />
         </Form.Group>
         <Form.Group>
@@ -151,11 +191,31 @@ export default function page() {
             onChange={(e)=> setCompany(prevState => ({...prevState, description: e.target.value}))}
           />
         </Form.Group>
+        <div className='d-flex gap-3'>
+          <Form.Group className='mb-3'>
+            <Form.Label>Primary Brand Color</Form.Label>
+            <Form.Control
+              type='color'
+              title='Choose your primary brand color'
+              value={company.primaryColor || '#0d6efd'}
+              onChange={(e)=> setCompany(prevState => ({...prevState, primaryColor: e.target.value}))}
+            />
+          </Form.Group>
+          <Form.Group className='mb-3'>
+            <Form.Label>Secondary Brand Color</Form.Label>
+            <Form.Control
+              type='color'
+              title='Choose your secondary brand color'
+              value={company.secondaryColor || '#6c757d'}
+              onChange={(e)=> setCompany(prevState => ({...prevState, secondaryColor: e.target.value}))}
+            />
+          </Form.Group>
+        </div>
         <Form.Group>
           <Form.Label>ControlId</Form.Label>
           <Form.Control
             type='text'
-            value={company.controlId || ''} 
+            value={company.controlId || ''}
             disabled
             onChange={(e)=> setCompany(prevState => ({...prevState, controlId: e.target.value}))}
           />

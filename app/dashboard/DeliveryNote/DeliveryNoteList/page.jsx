@@ -4,10 +4,11 @@ import Calender from '@/app/components/Calender'
 import XlsExportButton from '@/app/components/XlsExportButon'
 import axios from 'axios'
 import React, { useEffect, useState } from 'react'
-import {Container, ButtonToolbar, Col, Row, Form, 
-  ButtonGroup, Table, Button, InputGroup, 
-  Stack} from 'react-bootstrap'
+import {Container, ButtonToolbar, Col, Row, Form,
+  ButtonGroup, Table, Button, InputGroup,
+  Stack, Badge} from 'react-bootstrap'
 import { toast } from 'react-toastify'
+import { round2, formatAmount } from '../../utils'
 
 const QuotationList =  () => {
 
@@ -117,19 +118,16 @@ const QuotationList =  () => {
       </Row>
       </Row>
 
-      <Table striped='columns' bordered hover className='m-2'>
+      <Table striped='columns' bordered hover responsive className='m-2 align-middle'>
         <thead>
           <tr>
             <th>#</th>
-            <th>ctrID</th>
-            <th>Quote No</th>
+            <th>Note</th>
             <th>Date</th>
             <th>Customer</th>
-            <th>Total</th>
-            <th>Vat</th>
-            <th>TTIncl.Vat</th>
-            <th>Discount</th>
-            <th>Approval</th>
+            <th className='text-end'>Total</th>
+            <th className='text-end'>Pending</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -137,24 +135,23 @@ const QuotationList =  () => {
           {notes?.map((note, index)=> (
             <tr key={index}>
               <td>{index + 1}</td>
-              <td>{note.controlId}</td>
-              <td>{note.noteNo}</td>
+              <td>
+                <Badge>{note.noteNo}</Badge>
+                <div className='text-muted small'>{note.controlId}</div>
+              </td>
               <td>{new Date(note.createdAt)?.toLocaleDateString()}</td>
               <td>{note.customerName}</td>
-              <td>{note.totalWithoutVat}</td>
-              <td>{note.vatAmount}</td>
-              <td>{note.totalWithVat}</td>
-              <td>{note.discountAmount}</td>
-              <td style={{color: note.approved ? 'greenyellow' : 'tomato'} }>
-                {note.approved ? 'APPROVED' : 'PENDING'}
+              <td className='text-end'>{round2(note.totalAfterDiscount || 0).toFixed(2)}</td>
+              <td className='text-end'>{formatAmount(note.pendingAmount)}</td>
+              <td>
+                <Badge bg={note.status ? 'warning' : 'success'}>{note.status ? 'PENDING' : 'PAID'}</Badge>
               </td>
               <td>
-                <Stack gap={2}>
-                    <Button variant='outline-info btn-sm'>🖊</Button>
-                    <Button variant='outline-success btn-sm'  onClick={()=>handlePrint(note.noteNo, note.controlId, note.customerId)}>
+                <Stack gap={2} direction='horizontal'>
+                    <Button variant='outline-success btn-sm'  onClick={()=>handlePrint(note.noteNo, note.controlId, note.customerId)} title='Print'>
                       🖨
                     </Button>
-                    <Button variant='outline-danger btn-sm' onClick={()=> handleDeleteNote(note._id)}>
+                    <Button variant='outline-danger btn-sm' onClick={()=> handleDeleteNote(note._id)} title='Delete'>
                       ❌
                     </Button>
                   </Stack>
@@ -164,11 +161,10 @@ const QuotationList =  () => {
         </tbody>
         <tfoot>
             <tr>
-              <th colSpan={5}>Totals</th>
-              <td>{notes.reduce((acc, curr)=> acc + curr.totalWithoutVat, 0)}</td>
-              <td>{notes.reduce((acc, curr) => acc + curr.vatAmount, 0)}</td>
-              <td>{notes.reduce((acc, curr)=> acc + curr.totalWithVat, 0)}</td>
-              <td>{notes.reduce((acc, curr)=> acc + curr.discountAmount, 0 )}</td>
+              <th colSpan={4}>Totals</th>
+              <td className='text-end'>{round2(notes.reduce((acc, curr)=> acc + (curr.totalAfterDiscount || 0), 0)).toFixed(2)}</td>
+              <td className='text-end'>{round2(notes.reduce((acc, curr)=> acc + (curr.pendingAmount || 0), 0)).toFixed(2)}</td>
+              <td colSpan={2}></td>
             </tr>
         </tfoot>
       </Table>

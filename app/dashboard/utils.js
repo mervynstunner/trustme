@@ -8,6 +8,10 @@ export const handleDateChange=(newDate, setterFunc)=>{
 
 export const round2 = (num)=> Math.round(num * 100 + Number.EPSILON) / 100; // 123.2345 => 123.23
 
+// For list-table amount columns (payment method breakdowns, discounts, etc.) where
+// a bare "0" just means "not used" and reads as clutter/noise across most rows.
+export const formatAmount = (num) => (num ? round2(num).toFixed(2) : '')
+
 export const createCalc = (state) => {
   const {
     vatEnabled,

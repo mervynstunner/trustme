@@ -1,17 +1,20 @@
 'use client'
 
 import XlsExportButton from '@/app/components/XlsExportButon'
+import DocumentPreview from '@/app/components/DocumentPreview'
 import axios from 'axios'
 import { useEffect, useState } from 'react'
 import {Container, Stack, ButtonToolbar, Col, Row, Form, ButtonGroup, Button, Table, InputGroup, Badge } from 'react-bootstrap'
 import { toast } from 'react-toastify'
-import { round2 } from '../../utils'
+import { round2, formatAmount } from '../../utils'
 
 const PurchaseList = ()=> {
 
 
   const [purchases, setPurchases] = useState([])
   const [limit, setLimit] = useState(null)
+  const [selectedPurchase, setSelectedPurchase] = useState({})
+  const [showPreview, setShowPreview] = useState(false)
   const [date, setDate] = useState({
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
@@ -33,8 +36,8 @@ const PurchaseList = ()=> {
   const handlePrintPurchase=async(purchaseNo, controlId, supplierId)=>{
     if(window.confirm(`print purchase ${purchaseNo}?`)){
       toast.promise(
-        axios.post(`/api/print/purchase/${purchaseNo}/${controlId}/${supplierId}`, 
-          {}, 
+        axios.post(`/api/print/purchase/${purchaseNo}/${controlId}/${supplierId}`,
+          {},
           { responseType:"blob" }
         ).then((response)=>{
           const blob = new Blob([response.data], {type: "application/pdf"});
@@ -47,6 +50,17 @@ const PurchaseList = ()=> {
           error: "Oops try again!"
         }
       )
+    }
+  }
+
+  const handlePreviewPurchase = async(purchaseNo, controlId, supplierId)=>{
+    try{
+      const {data} = await axios.get(`/api/purchase/${purchaseNo}/${controlId}/${supplierId}`)
+      setSelectedPurchase(data)
+      setShowPreview(true)
+    }catch(error){
+      console.error(error)
+      toast.error('Failed to load purchase preview')
     }
   }
 
@@ -121,57 +135,40 @@ const PurchaseList = ()=> {
     </Row>
     </Row>
 
-    <Table striped='columns' bordered hover className='m-2'>
+    <Table striped='columns' bordered hover responsive className='m-2 align-middle'>
       <thead>
         <tr>
           <th>#</th>
-          <th>CtrID</th>
-          <th>Puchase No</th>
+          <th>Purchase</th>
           <th>Date</th>
-          <th>SUPPLIER</th>
-          <th>TOTAL EXCL.VAT</th>
-          <th>VAT AMOUNT</th>
-          <td>TOTAL</td>
-          <th>DISCOUNT AMT</th>
-          <th>TT After Discount</th>
-          <th>Cash Paid</th>
-          <th>Card Paid</th>
-          <th>Bank Paid</th>
-          <th>Paid Amt</th>
-          <th>Pending Amt</th>
+          <th>Supplier</th>
+          <th className='text-end'>Total</th>
+          <th className='text-end'>Pending</th>
           <th>Status</th>
-          <th>Files</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {purchases && purchases?.map((purchase, index)=> (
           <tr key={index}>
-            <td>{index}</td>
-            <td>{purchase.controlId}</td>
+            <td>{index + 1}</td>
             <td>
-              <Badge>
-              {purchase.purchaseNo}
-              </Badge>
+              <Badge>{purchase.purchaseNo}</Badge>
+              <div className='text-muted small'>{purchase.controlId}</div>
             </td>
             <td>{new Date(purchase.createdAt)?.toLocaleDateString()}</td>
             <td>{purchase?.supplierName}</td>
-            <td>{purchase?.totalWithoutVat}</td>
-            <td>{purchase?.vatAmount}</td>
-            <td>{purchase.totalWithVat}</td>
-            <td>{purchase.discountAmount}</td>
-            <td>{purchase.totalAfterDiscount}</td>
-            <td>{purchase?.cashAmount}</td>
-            <td>{purchase?.cardAmount}</td>
-            <td>{purchase?.bankAmount}</td>
-            <td>{purchase?.paidAmount}</td>
-            <td>{purchase?.pendingAmount}</td>
-            <td style={{color: purchase.status ? 'red' : 'green'}}>{purchase?.status ? 'PENDING' : 'PAID'}</td>
-            <td>🗂️</td>
+            <td className='text-end'>{round2(purchase?.totalAfterDiscount || 0).toFixed(2)}</td>
+            <td className='text-end'>{formatAmount(purchase?.pendingAmount)}</td>
             <td>
-              <Stack gap={2}>
-                <Button variant='outline-info btn-sm'>🖊</Button>
-                <Button variant='outline-success btn-sm' onClick={()=> handlePrintPurchase(purchase.purchaseNo, purchase.controlId, purchase.supplierId)}>
+              <Badge bg={purchase.status ? 'warning' : 'success'}>{purchase?.status ? 'PENDING' : 'PAID'}</Badge>
+            </td>
+            <td>
+              <Stack gap={2} direction='horizontal'>
+                <Button variant='outline-primary btn-sm' onClick={()=> handlePreviewPurchase(purchase.purchaseNo, purchase.controlId, purchase.supplierId)} title='Preview'>
+                  👆
+                </Button>
+                <Button variant='outline-success btn-sm' onClick={()=> handlePrintPurchase(purchase.purchaseNo, purchase.controlId, purchase.supplierId)} title='Print'>
                   🖨
                 </Button>
               </Stack>
@@ -181,20 +178,56 @@ const PurchaseList = ()=> {
       </tbody>
       <tfoot>
           <tr>
-            <th colSpan={5}>Totals</th>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.totalWithoutVat, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.vatAmount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase) => acc + purchase.totalWithVat, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.discountAmount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.totalAfterDiscount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.cashAmount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.cardAmount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.bankAmount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.paidAmount, 0))}</td>
-            <td>{round2(purchases.reduce((acc, purchase)=> acc + purchase.pendingAmount, 0))}</td>
+            <th colSpan={4}>Totals</th>
+            <td className='text-end'>{round2(purchases.reduce((acc, purchase)=> acc + (purchase.totalAfterDiscount || 0), 0)).toFixed(2)}</td>
+            <td className='text-end'>{round2(purchases.reduce((acc, purchase)=> acc + (purchase.pendingAmount || 0), 0)).toFixed(2)}</td>
+            <td colSpan={2}></td>
           </tr>
       </tfoot>
     </Table>
+
+    <DocumentPreview
+      show={showPreview}
+      onHide={()=> setShowPreview(false)}
+      title="Purchase Order Preview"
+      documentLabel="PURCHASE ORDER"
+      company={selectedPurchase.company}
+      party={{
+        label: "SUPPLIER",
+        name: selectedPurchase.supplier?.name,
+        address: selectedPurchase.supplier?.address,
+        phone: selectedPurchase.supplier?.phone,
+        trn: selectedPurchase.supplier?.trn,
+      }}
+      documentNoLabel="Purchase No"
+      documentNo={selectedPurchase.purchase?.purchaseNo}
+      date={selectedPurchase.purchase?.date || selectedPurchase.purchase?.createdAt}
+      details={[
+        { label: "Control No", value: selectedPurchase.purchase?.controlId },
+        { label: "Purchase Order No", value: selectedPurchase.purchase?.purchaseOrderNo },
+        { label: "Purchase Invoice No", value: selectedPurchase.purchase?.purchaseInvNo },
+      ]}
+      priceLabel="P.Price"
+      items={selectedPurchase.transaction?.items?.map((item) => ({
+        ...item,
+        price: item.purchasePrice,
+      }))}
+      totals={[
+        { label: "Subtotal", value: selectedPurchase.purchase?.totalWithoutVat },
+        { label: "Discount", value: selectedPurchase.purchase?.discountAmount },
+        { label: `Tax (${selectedPurchase.purchase?.vatRate}%)`, value: selectedPurchase.purchase?.vatAmount },
+        { label: "Total", value: selectedPurchase.purchase?.totalAfterDiscount, emphasize: true },
+        { label: "Amount Paid", value: selectedPurchase.purchase?.paidAmount },
+        { label: "Balance Due", value: selectedPurchase.purchase?.pendingAmount },
+      ]}
+      amountInWords={selectedPurchase.purchase?.amountInWords}
+      terms={[
+        "Goods received are subject to inspection and approval",
+        "Please reference purchase number when paying",
+      ]}
+      forLabel={`FOR ${selectedPurchase.company?.name || ""}`}
+      footnote="This is a system-generated Purchase Order, present control number [controlNo] for any resolutions"
+    />
   </Container>
   )
 }

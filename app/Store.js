@@ -1,7 +1,19 @@
 'use client'
 import { createContext, useReducer, useEffect, useState } from "react";
+import axios from "axios";
 
 export const useStore = createContext();
+
+// Every page in this app does a bare `import axios from 'axios'` and calls it
+// directly (no shared instance) — setting the default header here once makes
+// every one of those call sites send the token automatically.
+const applyAuthHeader = (user) => {
+  if (user?.token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
+  } else {
+    delete axios.defaults.headers.common['Authorization'];
+  }
+};
 
 // Initial state without localStorage access
 const defaultInitialState = {
@@ -20,11 +32,13 @@ function reducer(state, action) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('userData', JSON.stringify(user));
       }
+      applyAuthHeader(user);
       return { ...state, userData: user };
     case 'LOG_OUT':
       if (typeof window !== 'undefined') {
         localStorage.removeItem('userData');
       }
+      applyAuthHeader(null);
       return { ...state, userData: null };
     case 'SAVE_SUPPLIER':
       const supplier = action.payload;

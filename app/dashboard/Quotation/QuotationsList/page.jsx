@@ -4,10 +4,11 @@ import Calender from '@/app/components/Calender'
 import XlsExportButton from '@/app/components/XlsExportButon'
 import axios from 'axios'
 import React, { useEffect, useState } from 'react'
-import {Container, ButtonToolbar, Col, Row, Form, 
-  ButtonGroup, Table, Button, InputGroup, 
-  Stack} from 'react-bootstrap'
+import {Container, ButtonToolbar, Col, Row, Form,
+  ButtonGroup, Table, Button, InputGroup,
+  Stack, Badge} from 'react-bootstrap'
 import { toast } from 'react-toastify'
+import { round2 } from '../../utils'
 
 const QuotationList =  () => {
 
@@ -97,18 +98,14 @@ const QuotationList =  () => {
       </Row>
       </Row>
 
-      <Table striped='columns' bordered hover className='m-2'>
+      <Table striped='columns' bordered hover responsive className='m-2 align-middle'>
         <thead>
           <tr>
             <th>#</th>
-            <th>ctrID</th>
-            <th>Quote No</th>
+            <th>Quote</th>
             <th>Date</th>
             <th>Customer</th>
-            <th>Total</th>
-            <th>Vat</th>
-            <th>TTIncl.Vat</th>
-            <th>Discount</th>
+            <th className='text-end'>Total</th>
             <th>Approval</th>
             <th>Actions</th>
           </tr>
@@ -117,22 +114,21 @@ const QuotationList =  () => {
           {quotations?.map((quotation, index)=> (
             <tr key={index}>
               <td>{index + 1}</td>
-              <td>{quotation.controlId}</td>
-              <td>{quotation.quotationNo}</td>
+              <td>
+                <Badge>{quotation.quotationNo}</Badge>
+                <div className='text-muted small'>{quotation.controlId}</div>
+              </td>
               <td>{new Date(quotation.createdAt)?.toLocaleDateString()}</td>
               <td>{quotation.customerName}</td>
-              <td>{quotation.totalWithoutVat}</td>
-              <td>{quotation.vatAmount}</td>
-              <td>{quotation.totalWithVat}</td>
-              <td>{quotation.discountAmount}</td>
-              <td style={{color: quotation.approved ? 'greenyellow' : 'tomato'} }>
-                {quotation.approved ? 'APPROVED' : 'PENDING'}
+              <td className='text-end'>{round2(quotation.totalAfterDiscount || quotation.totalWithVat || 0).toFixed(2)}</td>
+              <td>
+                <Badge bg={quotation.approved ? 'success' : 'secondary'}>
+                  {quotation.approved ? 'APPROVED' : 'PENDING'}
+                </Badge>
               </td>
               <td>
-                <Stack gap={2}>
-                    <Button variant='outline-info btn-sm'>🖊</Button>
-                    <Button variant='outline-success btn-sm' onClick={()=> handlePrint(quotation)}>🖨</Button>
-                    <Button variant='outline-danger btn-sm'>❌</Button>
+                <Stack gap={2} direction='horizontal'>
+                    <Button variant='outline-success btn-sm' onClick={()=> handlePrint(quotation)} title='Print'>🖨</Button>
                   </Stack>
               </td>
             </tr>
@@ -140,11 +136,9 @@ const QuotationList =  () => {
         </tbody>
         <tfoot>
             <tr>
-              <th colSpan={5}>Totals</th>
-              <td>{quotations.reduce((acc, curr)=> acc + curr.totalWithoutVat, 0)}</td>
-              <td>{quotations.reduce((acc, curr) => acc + curr.vatAmount, 0)}</td>
-              <td>{quotations.reduce((acc, curr)=> acc + curr.totalWithVat, 0)}</td>
-              <td>{quotations.reduce((acc, curr)=> acc + curr.discountAmount, 0 )}</td>
+              <th colSpan={4}>Totals</th>
+              <td className='text-end'>{round2(quotations.reduce((acc, curr)=> acc + (curr.totalAfterDiscount || curr.totalWithVat || 0), 0)).toFixed(2)}</td>
+              <td colSpan={2}></td>
             </tr>
         </tfoot>
       </Table>

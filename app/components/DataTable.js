@@ -505,7 +505,28 @@ export default function DataTable(props) {
 
   // Save and print handlers
   const saveData = async (type, data) => {
-    await axios.post(`/api/${type}/save`, { data })
+    try {
+      await axios.post(`/api/${type}/save`, { data })
+    } catch (error) {
+      throw new Error(error?.response?.data?.message || 'Failed to save')
+    }
+  }
+
+  // With responseType: "blob", axios stores an error response body as a Blob
+  // too (even a JSON error from the server) rather than parsing it — so a
+  // failure has to be decoded back to text before we can show the real reason.
+  const extractPdfErrorMessage = async (error) => {
+    const responseData = error?.response?.data
+    if (responseData instanceof Blob) {
+      try {
+        const text = await responseData.text()
+        const parsed = JSON.parse(text)
+        return parsed.message || parsed.error || null
+      } catch {
+        return null
+      }
+    }
+    return responseData?.message || null
   }
 
   const saveAndPrint = async (type, data) => {
@@ -520,6 +541,8 @@ export default function DataTable(props) {
       keysToRemove.forEach(key => localStorage.removeItem(key))
     } catch (error) {
       console.error("Error rendering PDF", error)
+      const message = await extractPdfErrorMessage(error)
+      throw new Error(message || 'Failed to generate PDF')
     }
   }
 
@@ -542,7 +565,11 @@ export default function DataTable(props) {
         {
           pending: "Processing...",
           success: "Operation completed successfully!",
-          error: "Operation failed. Please try again!",
+          error: {
+            render({ data: err }) {
+              return err?.message || "Operation failed. Please try again!"
+            }
+          }
         }
       )
     }
