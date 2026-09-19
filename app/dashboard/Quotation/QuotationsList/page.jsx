@@ -2,8 +2,9 @@
 
 import Calender from '@/app/components/Calender'
 import XlsExportButton from '@/app/components/XlsExportButon'
+import DocumentPreview from '@/app/components/DocumentPreview'
 import axios from 'axios'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {Container, ButtonToolbar, Col, Row, Form,
   ButtonGroup, Table, Button, InputGroup,
   Stack, Badge} from 'react-bootstrap'
@@ -13,20 +14,23 @@ import { round2 } from '../../utils'
 const QuotationList =  () => {
 
   const [quotations, setQuotations] = useState([])
+  const [limit, setLimit] = useState('')
+  const [selectedQuotation, setSelectedQuotation] = useState({})
+  const [showPreview, setShowPreview] = useState(false)
 
-  const getData = async()=>{
-    const {data} = await axios.get(`/api/quotation`)
+  const getData = useCallback(async()=>{
+    const {data} = await axios.get(`/api/quotation`, { params: { limit: limit || undefined } })
     setQuotations(data)
-  } 
+  }, [limit])
 
 
   useEffect(()=>{
     getData()
-  }, [])
+  }, [getData])
 
 
   const handlePrint = async({customerId, controlId, quotationNo})=>{
-    
+
     if(window.confirm (`Print Quotation ${quotationNo}`)){
       toast.promise(
         axios.post(`/api/quotation/print/${quotationNo}/${controlId}/${customerId}`,
@@ -44,7 +48,18 @@ const QuotationList =  () => {
       }
       )
     }
-  } 
+  }
+
+  const handlePreview = async(quotationNo, controlId, customerId)=>{
+    try{
+      const {data} = await axios.get(`/api/quotation/${quotationNo}/${controlId}/${customerId}`)
+      setSelectedQuotation(data)
+      setShowPreview(true)
+    }catch(error){
+      console.error('Error fetching quotation preview:', error)
+      toast.error('Failed to load quotation preview')
+    }
+  }
   return (
     <Container fluid>
       <h1>Quotations List</h1>
@@ -76,10 +91,10 @@ const QuotationList =  () => {
       <Row>
         <Col className='col-md-2'>
           <Form.Group>
-            <Form.Select>
-              <option>--entries--</option>
-              {[100, 150, 200, 250].map((x, index)=>(
-                <option key={index}>{x}</option>
+            <Form.Select value={limit} onChange={(e)=> setLimit(e.target.value)}>
+              <option value=''>--entries--</option>
+              {[10, 50, 100, 150, 200, 250].map((x, index)=>(
+                <option key={index} value={x}>{x}</option>
               ))}
         </Form.Select>
         </Form.Group>
@@ -128,6 +143,11 @@ const QuotationList =  () => {
               </td>
               <td>
                 <Stack gap={2} direction='horizontal'>
+                    <Button
+                      variant='outline-info btn-sm'
+                      onClick={()=> handlePreview(quotation.quotationNo, quotation.controlId, quotation.customerId)}
+                      title='Preview'
+                    >👆</Button>
                     <Button variant='outline-success btn-sm' onClick={()=> handlePrint(quotation)} title='Print'>🖨</Button>
                   </Stack>
               </td>
@@ -142,6 +162,45 @@ const QuotationList =  () => {
             </tr>
         </tfoot>
       </Table>
+
+      <DocumentPreview
+        show={showPreview}
+        onHide={()=> setShowPreview(false)}
+        title="Quotation Preview"
+        documentLabel="QUOTATION"
+        company={selectedQuotation.company}
+        party={{
+          label: "CUSTOMER",
+          name: selectedQuotation.customer?.name,
+          address: selectedQuotation.customer?.address,
+          phone: selectedQuotation.customer?.phone,
+          trn: selectedQuotation.customer?.trn,
+        }}
+        documentNoLabel="Quotation No"
+        documentNo={selectedQuotation.quotation?.quotationNo}
+        date={selectedQuotation.quotation?.date || selectedQuotation.quotation?.createdAt}
+        details={[
+          { label: "Control No", value: selectedQuotation.quotation?.controlId },
+        ]}
+        priceLabel="Price"
+        items={selectedQuotation.transaction?.items?.map((item) => ({
+          ...item,
+          price: item.salePrice,
+        }))}
+        totals={[
+          { label: "Subtotal", value: selectedQuotation.quotation?.totalWithoutVat },
+          { label: "Discount", value: selectedQuotation.quotation?.discountAmount },
+          { label: `Tax (${selectedQuotation.quotation?.vatRate}%)`, value: selectedQuotation.quotation?.vatAmount },
+          { label: "Total", value: selectedQuotation.quotation?.totalAfterDiscount, emphasize: true },
+        ]}
+        amountInWords={selectedQuotation.quotation?.amountInWords}
+        terms={[
+          "This quotation is valid for 30 days from the date of issue",
+          "Please reference control number for any resolutions",
+        ]}
+        forLabel={`FOR ${selectedQuotation.company?.name || ""}`}
+        footnote="This is a system-generated Quotation, present control number [controlNo] for any resolutions"
+      />
     </Container>
   )
 }
