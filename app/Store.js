@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useReducer, useEffect, useState } from "react";
+import { createContext, useReducer } from "react";
 import axios from "axios";
 
 export const useStore = createContext();
@@ -70,69 +70,44 @@ function reducer(state, action) {
   }
 }
 
-export function StoreProvider(props) {
-  // Start with default state
-  const [state, dispatch] = useReducer(reducer, defaultInitialState);
-  const [isHydrated, setIsHydrated] = useState(false);
+// Safely get data from localStorage
+const getFromStorage = (key) => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error(`Error loading ${key} from localStorage:`, error);
+    return null;
+  }
+};
 
-  // Load saved data from localStorage after component mounts (client-side only)
-  useEffect(() => {
-    // Only run on client side
-    const loadLocalStorageData = () => {
-      const initialState = { ...defaultInitialState };
-      
-      // Safely get data from localStorage
-      const getFromStorage = (key) => {
-        try {
-          const data = localStorage.getItem(key);
-          return data ? JSON.parse(data) : null;
-        } catch (error) {
-          console.error(`Error loading ${key} from localStorage:`, error);
-          return null;
-        }
-      };
-      
-      // Load all stored data
-      initialState.userData = getFromStorage('userData');
-      initialState.companyData = getFromStorage('companyData');
-      initialState.supplierData = getFromStorage('supplierData'); 
-      initialState.customerData = getFromStorage('customerData');
-      initialState.saleData = getFromStorage('saleData');
-      initialState.purchaseData = getFromStorage('purchaseData');
-      
-      // Update state with localStorage data
-      Object.entries(initialState).forEach(([key, value]) => {
-        if (value !== null) {
-          // Use appropriate action type based on key
-          const actionType = getActionTypeForKey(key);
-          if (actionType) {
-            dispatch({ type: actionType, payload: value });
-          }
-        }
-      });
-      
-      setIsHydrated(true);
-    };
-    
-    loadLocalStorageData();
-  }, []);
-  
-  // Helper function to get action type from key
-  const getActionTypeForKey = (key) => {
-    switch (key) {
-      case 'userData': return 'SET_USER';
-      case 'supplierData': return 'SAVE_SUPPLIER';
-      case 'customerData': return 'SAVE_CUSTOMER';
-      case 'saleData': return 'SAVE_SALE';
-      case 'purchaseData': return 'SAVE_PURCHASE';
-      default: return null;
-    }
+// useReducer's lazy-initializer form runs synchronously during the first
+// render (server: no window, falls back to defaults; client: real
+// localStorage), BEFORE any component's mount effects fire — unlike loading
+// this in a useEffect, which let child pages fire their own data-fetching
+// effects first and send requests with no Authorization header at all.
+const init = () => {
+  if (typeof window === 'undefined') return defaultInitialState;
+
+  const userData = getFromStorage('userData');
+  applyAuthHeader(userData);
+
+  return {
+    ...defaultInitialState,
+    userData,
+    companyData: getFromStorage('companyData'),
+    supplierData: getFromStorage('supplierData'),
+    customerData: getFromStorage('customerData'),
+    saleData: getFromStorage('saleData'),
+    purchaseData: getFromStorage('purchaseData'),
   };
+};
+
+export function StoreProvider(props) {
+  const [state, dispatch] = useReducer(reducer, defaultInitialState, init);
 
   const value = { state, dispatch };
-  
-  // You can optionally render children only after hydration is complete
-  // This prevents flickering from default state to hydrated state
+
   return (
     <useStore.Provider value={value}>
       {props.children}
