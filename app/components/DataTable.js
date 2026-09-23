@@ -254,10 +254,7 @@ export default function DataTable(props) {
 
     try {
       const {data} = await toast.promise(
-        fetch('/api/uploads', {
-          method: 'POST',
-          body: formData,
-        }).then((res) => res.json()),
+        axios.post('/api/uploads', formData),
         {
           pending: 'Uploading image...',
           success: 'Image uploaded successfully!',
@@ -265,8 +262,8 @@ export default function DataTable(props) {
         }
       )
 
-      if (data) {
-        handleRowChange(index, 'image', data[0])
+      if (data?.data?.length > 0) {
+        handleRowChange(index, 'image', data.data[0])
       } else {
         toast.error('Failed to get valid response from server')
       }
